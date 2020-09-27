@@ -1,11 +1,17 @@
-FROM microsoft/aspnet:4.7
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-buster-slim AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
 
-RUN powershell -NoProfile -Command Remove-Item -Recurse C:\inetpub\wwwroot\*
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
+WORKDIR /sscms
+RUN wget https://dl.sscms.com/cms/7.0.1/sscms-7.0.1-linux-x64.tar.gz
+RUN tar -xzf sscms-7.0.1-linux-x64.tar.gz
+RUN rm sscms-7.0.1-linux-x64.tar.gz -f
+RUN cp -r /sscms/wwwroot/sitefiles/assets /sscms/assets
+RUN rm -rf /sscms/wwwroot/sitefiles/assets
 
-WORKDIR /inetpub/wwwroot
-
-COPY Dockerfile.ps1 .
-
-RUN powershell -executionpolicy bypass .\Dockerfile.ps1
-
-COPY build/ .
+FROM base AS final
+WORKDIR /app
+COPY --from=build /sscms .
+ENTRYPOINT ["dotnet", "SSCMS.Web.dll"]
